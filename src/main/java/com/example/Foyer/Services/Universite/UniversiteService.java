@@ -21,7 +21,8 @@ public class UniversiteService  implements IUniversiteService{
 
     @Override
     public Universite findById(long id) {
-        return repo.findById(id).get();
+        return repo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Universite not found for id: " + id));
     }
 
     @Override
@@ -34,8 +35,4 @@ public class UniversiteService  implements IUniversiteService{
         repo.delete(u);
     }
 
-//    @Override
-//    public Universite ajouterUniversiteEtSonFoyer(Universite u) {
-//        return repo.save(u);
-//    }
 }
