@@ -76,6 +76,7 @@ pipeline {
                         echo "Grafana alert is not firing. Proceeding with pipeline."
                     } else {
                         error "Unknown alert state: ${alertStatus}"
+
                     }
                 }
             }
