@@ -60,15 +60,15 @@ pipeline {
         stage('Quality Gate') {
             steps {
                 timeout(time: 2, unit: 'MINUTES') {
-                    script {
-                        def qualityGate = waitForQualityGate()
-                        if (qualityGate.status != 'OK') {
-                            error "❌ Quality Gate failed: ${qualityGate.status}"
-                        } else {
-                            echo "✅ Quality Gate passed"
+                            script {
+                                def qualityGate = waitForQualityGate()
+                                echo "SonarQube Quality Gate status: ${qualityGate.status}"
+
+                                if (!['OK'].contains(qualityGate.status)) {
+                                    error "❌ Blocking pipeline: Quality Gate returned ${qualityGate.status}"
+                                }
+                            }
                         }
-                    }
-                }
             }
         }
 
