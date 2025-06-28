@@ -27,8 +27,8 @@ public class UniversiteService  implements IUniversiteService{
 
     @Override
     public void deleteById(long id) {
-        //delete university hello
-        repo.deleteById(id);
+        Universite univers =  repo.findById(id).get();
+        repo.delete(univers);
     }
 
     @Override
