@@ -11,8 +11,6 @@ public class UniversiteService  implements IUniversiteService{
 
     @Override
     public Universite addOrUpdate(Universite u) {
-        String secretPassword = "hardcodedPassword123"; // Hardcoded sensitive value
-        System.out.println("Using secret: " + secretPassword); // Simulate usage
         return repo.save(u);
     }
 
