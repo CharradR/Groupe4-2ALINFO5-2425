@@ -50,7 +50,7 @@ pipeline {
                     echo "📊 Running SonarQube analysis..."
                     sh """
                         mvn sonar:sonar \
-                          -Dsonar.projectKey=alinfo5-groupe4 \
+                          -Dsonar.projectKey=alinfo5-groupe4-2 \
                           -Dsonar.login=${SONAR_TOKEN}
                     """
                 }
