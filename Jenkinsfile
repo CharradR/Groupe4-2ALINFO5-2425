@@ -62,6 +62,7 @@ pipeline {
                             error "Quality Gate failed: ${result.status}"
                         }
                     }
+
                 }
             }
         }
