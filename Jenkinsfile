@@ -47,28 +47,22 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('MySonarQubeServer') {
-                    echo "📊 Running SonarQube analysis..."
-                    sh """
-                        mvn sonar:sonar \
-                          -Dsonar.projectKey=alinfo5-groupe4-2 \
-                          -Dsonar.login=${SONAR_TOKEN}
-                    """
-                }
+                            sh 'mvn sonar:sonar -Dsonar.projectKey=alinfo5-groupe4-2'
+                        }
             }
         }
 
         stage('Quality Gate') {
             steps {
                 timeout(time: 2, unit: 'MINUTES') {
-                            script {
-                                def qualityGate = waitForQualityGate()
-                                echo "SonarQube Quality Gate status: ${qualityGate.status}"
-
-                                if (!['OK'].contains(qualityGate.status)) {
-                                    error "❌ Blocking pipeline: Quality Gate returned ${qualityGate.status}"
-                                }
-                            }
+                    script {
+                        def result = waitForQualityGate()
+                        echo "Quality Gate status: ${result.status}"
+                        if (result.status != 'OK') {
+                            error "Quality Gate failed: ${result.status}"
                         }
+                    }
+                }
             }
         }
 
