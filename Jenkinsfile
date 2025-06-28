@@ -59,7 +59,6 @@ pipeline {
                 }
             }
         }
-
         stage('Check Grafana Alert') {
             when { expression { env.QUALITY_GATE_STATUS == 'OK' } }
             steps {
@@ -81,7 +80,6 @@ pipeline {
                 }
             }
         }
-
         stage('Package') {
             when { expression { env.QUALITY_GATE_STATUS == 'OK' } }
             steps {
@@ -120,29 +118,30 @@ pipeline {
         success {
             echo '🎉 Build completed successfully!'
             script {
-                if (env.QUALITY_GATE_STATUS == 'OK') {
-                    emailext (
-                        subject: "SUCCESS: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
-                        body: """<p>🎉 <b>Build Successfully Deployed!</b></p>
-                                 <p>Project: ${env.JOB_NAME}</p>
-                                 <p>Build: #${env.BUILD_NUMBER}</p>
-                                 <p>Quality Gate: PASSED ✅</p>
-                                 <p>Grafana Alerts: OK ✅</p>
-                                 <p>Artifact: Foyer-${env.BUILD_NUMBER}.jar</p>
-                                 <p><a href="${env.BUILD_URL}">View Build</a></p>""",
-                        to: 'devops@example.com',
-                        mimeType: 'text/html'
-                    )
-                } else {
-                    emailext (
-                        subject: "WARNING: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
-                        body: """<p>⚠️ <b>Quality Gate Failed</b></p>
-                                 <p>Build succeeded but artifacts NOT deployed</p>
-                                 <p>Status: ${env.QUALITY_GATE_STATUS}</p>
-                                 <p><a href="${env.BUILD_URL}">Investigate Build</a></p>""",
-                        to: 'devops@example.com',
-                        mimeType: 'text/html'
-                    )
+                script {
+                    if (env.QUALITY_GATE_STATUS == 'OK') {
+                        emailext (
+                            subject: "SUCCESS: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                            body: """<p>🎉 <b>Build Successfully Deployed!</b></p>
+                                     <p>Project: ${env.JOB_NAME}</p>
+                                     <p>Build: #${env.BUILD_NUMBER}</p>
+                                     <p>Quality Gate: PASSED ✅</p>
+                                     <p>Artifact: Foyer-${env.BUILD_NUMBER}.jar</p>
+                                     <p><a href="${env.BUILD_URL}">View Build</a></p>""",
+                            to: 'devops@example.com',
+                            mimeType: 'text/html'
+                        )
+                    } else {
+                        emailext (
+                            subject: "WARNING: ${env.JOB_NAME} - Build #${env.BUILD_NUMBER}",
+                            body: """<p>⚠️ <b>Quality Gate Failed</b></p>
+                                     <p>Build succeeded but artifacts NOT deployed</p>
+                                     <p>Status: ${env.QUALITY_GATE_STATUS}</p>
+                                     <p><a href="${env.BUILD_URL}">Investigate Build</a></p>""",
+                            to: 'devops@example.com',
+                            mimeType: 'text/html'
+                        )
+                    }
                 }
             }
         }
@@ -159,7 +158,7 @@ pipeline {
                 )
             }
         }
-        항상 {
+        always {
             echo '🧹 Cleaning up...'
         }
     }
