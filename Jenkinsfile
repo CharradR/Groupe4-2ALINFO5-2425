@@ -8,6 +8,7 @@ pipeline {
     environment {
         SONAR_HOST_URL = 'http://192.168.33.10:9000'
         SONAR_TOKEN = credentials('SONAR_TOKEN2')
+        EMAIL_RECIPIENTS = 'raed.charrad91@gmail.com'
     }
 
     options {
@@ -52,14 +53,15 @@ pipeline {
             }
         }
 
-        stage('Quality Gate') {
+        stage('Quality Gate Check') {
             steps {
                 timeout(time: 2, unit: 'MINUTES') {
                     script {
                         def result = waitForQualityGate()
-                        echo "Quality Gate status: ${result.status}"
+                        echo "✅ Quality Gate status: ${result.status}"
                         if (result.status != 'OK') {
-                            error "Quality Gate failed: ${result.status}"
+                            currentBuild.result = 'FAILURE'
+                            error "❌ Quality Gate failed: ${result.status}"
                         }
                     }
                 }
@@ -73,13 +75,19 @@ pipeline {
             }
         }
 
-        stage('Upload to Nexus') {
+        stage('Package and Upload to Nexus') {
+            when {
+                expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
+            }
             steps {
                 script {
                     def version = "${env.BUILD_NUMBER}"
                     def jarFile = "target/Foyer-${version}.jar"
+                    echo "📦 Packaging..."
+                    sh "mvn package -DskipTests"
                     sh "cp target/Foyer-0.0.1.jar ${jarFile}"
 
+                    echo "🚀 Uploading to Nexus..."
                     nexusArtifactUploader(
                         artifacts: [[
                             artifactId: 'Foyer',
@@ -102,13 +110,23 @@ pipeline {
 
     post {
         success {
-            echo '🎉 Build completed successfully!'
-        }
-        failure {
-            echo '💥 Build failed.'
-        }
-        always {
-            echo '🧹 Cleaning up...'
-        }
+                    echo '🎉 Build completed successfully!'
+                }
+                failure {
+                    echo '💥 Build failed.'
+                    emailext (
+                        subject: "🚨 Jenkins Pipeline Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                        body: """<p><b>Project:</b> ${env.JOB_NAME}</p>
+                                 <p><b>Build Number:</b> ${env.BUILD_NUMBER}</p>
+                                 <p><b>Build URL:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                                 <p><b>Status:</b> ${currentBuild.currentResult}</p>""",
+                        recipientProviders: [[$class: 'DevelopersRecipientProvider']],
+                        to: "${EMAIL_RECIPIENTS}",
+                        mimeType: 'text/html'
+                    )
+                }
+                always {
+                    echo '🧹 Cleaning up workspace...'
+                }
     }
 }
