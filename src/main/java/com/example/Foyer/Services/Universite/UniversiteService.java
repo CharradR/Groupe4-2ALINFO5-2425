@@ -23,12 +23,12 @@ public class UniversiteService  implements IUniversiteService{
 
     @Override
     public Universite findById(long id) {
-        return repo.findById(id).orElse(null); // Get Universite or null if not found
-        // Deliberate NPE bug
+        return repo.findById(id).orElseThrow(()->new RuntimeException("universite id not found"));
     }
 
     @Override
     public void deleteById(long id) {
+        //delete university hello
         repo.deleteById(id);
     }
 
