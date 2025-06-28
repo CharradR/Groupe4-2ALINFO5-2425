@@ -115,13 +115,12 @@ pipeline {
                 failure {
                     echo '💥 Build failed.'
                     emailext (
-                        subject: "🚨 Jenkins Pipeline Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                        to: "${EMAIL_RECIPIENTS}",
+                        subject: "🚨 Jenkins Build Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                         body: """<p><b>Project:</b> ${env.JOB_NAME}</p>
                                  <p><b>Build Number:</b> ${env.BUILD_NUMBER}</p>
-                                 <p><b>Build URL:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
+                                 <p><b>URL:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
                                  <p><b>Status:</b> ${currentBuild.currentResult}</p>""",
-                        recipientProviders: [[$class: 'DevelopersRecipientProvider']],
-                        to: "${EMAIL_RECIPIENTS}",
                         mimeType: 'text/html'
                     )
                 }
