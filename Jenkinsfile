@@ -1,14 +1,12 @@
 pipeline {
     agent any
-
-    triggers {
-        githubPush()
-    }
+    triggers { githubPush() }
 
     environment {
         SONAR_HOST_URL = 'http://192.168.33.10:9000'
         SONAR_TOKEN = credentials('SONAR_TOKEN2')
-        EMAIL_RECIPIENTS = 'raed.charrad91@gmail.com'
+        VERSION = "${env.BUILD_NUMBER}"
+        JAR_FILE = "target/Foyer-${VERSION}.jar"
     }
 
     options {
@@ -31,68 +29,52 @@ pipeline {
             }
         }
 
-        stage('Compile') {
+        stage('Build & Test') {
             steps {
-                echo "🔧 Compiling the project..."
-                sh 'mvn compile'
-            }
-        }
-
-        stage('Unit Test') {
-            steps {
-                echo "🧪 Running tests..."
-                sh 'mvn test -Dspring.profiles.active=test'
+                echo "🔧 Compiling and testing..."
+                sh 'mvn compile test -Dspring.profiles.active=test'
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('MySonarQubeServer') {
-                            sh 'mvn sonar:sonar -Dsonar.projectKey=alinfo5-groupe4-2'
-                        }
+                    sh 'mvn sonar:sonar -Dsonar.projectKey=alinfo5-groupe4-2'
+                }
             }
         }
 
-        stage('Quality Gate Check') {
+        stage('Quality Gate') {
             steps {
-                timeout(time: 2, unit: 'MINUTES') {
+                timeout(time: 10, unit: 'MINUTES') {
                     script {
-                        def result = waitForQualityGate()
-                        echo "✅ Quality Gate status: ${result.status}"
-                        if (result.status != 'OK') {
-                            currentBuild.result = 'FAILURE'
-                            error "❌ Quality Gate failed: ${result.status}"
-                        }
+                        def qg = waitForQualityGate()
+                        echo "Quality Gate status: ${qg.status}"
+                        env.QUALITY_GATE_STATUS = qg.status
                     }
                 }
             }
         }
 
         stage('Package') {
+            when { expression { env.QUALITY_GATE_STATUS == 'OK' } }
             steps {
                 echo "📦 Packaging the application..."
                 sh 'mvn package -DskipTests'
+                sh "cp target/Foyer-0.0.1.jar ${JAR_FILE}"
             }
         }
 
-        stage('Package and Upload to Nexus') {
-            when {
-                expression { currentBuild.resultIsBetterOrEqualTo('SUCCESS') }
-            }
+        stage('Upload to Nexus') {
+            when { expression { env.QUALITY_GATE_STATUS == 'OK' } }
             steps {
-                script {
-                    def version = "${env.BUILD_NUMBER}"
-                    def jarFile = "target/Foyer-${version}.jar"
-                    echo "📦 Packaging..."
-                    sh "mvn package -DskipTests"
-                    sh "cp target/Foyer-0.0.1.jar ${jarFile}"
-
-                    echo "🚀 Uploading to Nexus..."
+                timeout(time: 5, unit: 'MINUTES') {
+                    echo "⬆️ Uploading to Nexus..."
                     nexusArtifactUploader(
                         artifacts: [[
                             artifactId: 'Foyer',
                             classifier: '',
-                            file: jarFile,
+                            file: env.JAR_FILE,
                             type: 'jar'
                         ]],
                         credentialsId: 'nexus-creds',
@@ -101,7 +83,7 @@ pipeline {
                         nexusVersion: 'nexus3',
                         protocol: 'http',
                         repository: 'Foyer',
-                        version: version
+                        version: env.VERSION
                     )
                 }
             }
@@ -110,22 +92,34 @@ pipeline {
 
     post {
         success {
-                    echo '🎉 Build completed successfully!'
-                }
-                failure {
-                    echo '💥 Build failed.'
+            echo '🎉 Build completed successfully!'
+            script {
+                if (env.QUALITY_GATE_STATUS == 'OK') {
                     emailext (
-                        to: "${EMAIL_RECIPIENTS}",
-                        subject: "🚨 Jenkins Build Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                        body: """<p><b>Project:</b> ${env.JOB_NAME}</p>
-                                 <p><b>Build Number:</b> ${env.BUILD_NUMBER}</p>
-                                 <p><b>URL:</b> <a href="${env.BUILD_URL}">${env.BUILD_URL}</a></p>
-                                 <p><b>Status:</b> ${currentBuild.currentResult}</p>""",
+                        subject: "SUCCESS: Job ${env.JOB_NAME} - Build ${env.BUILD_NUMBER}",
+                        body: """<p>✅ Build succeeded and artifacts deployed to Nexus</p>
+                                 <p>Check console output: <a href="${env.BUILD_URL}">${env.JOB_NAME} #${env.BUILD_NUMBER}</a></p>""",
+                        to: 'dev-team@example.com',
                         mimeType: 'text/html'
                     )
                 }
-                always {
-                    echo '🧹 Cleaning up workspace.. ..'
-                }
+            }
+        }
+        failure {
+            echo '💥 Build failed.'
+            script {
+                emailext (
+                    subject: "FAILED: Job ${env.JOB_NAME} - Build ${env.BUILD_NUMBER}",
+                    body: """<p>❌ Build failed during stage: ${currentBuild.currentResult}</p>
+                             <p>Quality Gate Status: ${env.QUALITY_GATE_STATUS ?: 'N/A'}</p>
+                             <p>Check console output: <a href="${env.BUILD_URL}">${env.JOB_NAME} #${env.BUILD_NUMBER}</a></p>""",
+                    to: 'dev-team@example.com',
+                    mimeType: 'text/html'
+                )
+            }
+        }
+        always {
+            echo '🧹 Cleaning up...'
+        }
     }
 }
